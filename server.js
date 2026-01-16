@@ -14,22 +14,37 @@ const feeds = [
 ];
 
 app.get("/api/alerts", async (req, res) => {
-  const results = [];
+  try {
+    const results = [];
 
-  for (const feed of feeds) {
-    const data = await parser.parseURL(feed.url);
-    data.items.forEach(item => {
-      results.push({
-        title: item.title,
-        source: feed.source,
-        level: item.title?.toLowerCase().includes(\"critique\") ? \"Critique\" : \"Élevé\"
+    for (const feed of feeds) {
+      const data = await parser.parseURL(feed.url);
+
+      data.items.forEach(item => {
+        const title = item.title || "";
+        const lowerTitle = title.toLowerCase();
+
+        let level = "Moyen";
+        if (lowerTitle.includes("critique")) level = "Critique";
+        else if (lowerTitle.includes("important") || lowerTitle.includes("élevé")) level = "Élevé";
+
+        results.push({
+          title,
+          source: feed.source,
+          level
+        });
       });
-    });
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur lors de la récupération des flux" });
   }
-
-  res.json(results);
 });
 
-app.listen(3001, () => {
-  console.log(\"API OnSecure démarrée\");
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`API OnSecure démarrée sur le port ${PORT}`);
 });
+
