@@ -4,17 +4,30 @@ import cors from "cors";
 
 const app = express();
 
+// Parser RSS avec User-Agent obligatoire pour CERT-FR
 const parser = new Parser({
   headers: {
-    "User-Agent": "OnSecure-RSS-Monitor/1.0"
-  }
+    "User-Agent": "OnSecure-RSS-Monitor/1.0 (+https://onsecure.fr)"
+  },
+  timeout: 10000
 });
 
 app.use(cors());
 
+// Route racine (évite Cannot GET /)
+app.get("/", (req, res) => {
+  res.send("API OnSecure active – utilisez /api/alerts");
+});
+
 const feeds = [
-  { url: "https://www.cert.ssi.gouv.fr/alerte/feed/", source: "CERT-FR" },
-  { url: "https://www.cert.ssi.gouv.fr/avis/feed/", source: "CERT-FR" }
+  {
+    url: "https://www.cert.ssi.gouv.fr/alerte/feed/",
+    source: "CERT-FR"
+  },
+  {
+    url: "https://www.cert.ssi.gouv.fr/avis/feed/",
+    source: "CERT-FR"
+  }
 ];
 
 app.get("/api/alerts", async (req, res) => {
@@ -22,7 +35,10 @@ app.get("/api/alerts", async (req, res) => {
 
   for (const feed of feeds) {
     try {
+      console.log(`Récupération du flux : ${feed.url}`);
       const data = await parser.parseURL(feed.url);
+
+      if (!data.items) continue;
 
       data.items.forEach(item => {
         const title = item.title || "";
@@ -39,7 +55,7 @@ app.get("/api/alerts", async (req, res) => {
         });
       });
     } catch (err) {
-      console.error(`Erreur flux ${feed.url}`, err.message);
+      console.error(`ERREUR flux ${feed.url} :`, err.message);
     }
   }
 
